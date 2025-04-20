@@ -1,0 +1,173 @@
+-- [[ ADMIN PANEL SYSTEM - With ForceField, Fly, Godmode ]] --
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- RemoteEvent Setup
+local remote = ReplicatedStorage:FindFirstChild("AdminCommand")
+if not remote then
+	remote = Instance.new("RemoteEvent")
+	remote.Name = "AdminCommand"
+	remote.Parent = ReplicatedStorage
+end
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AdminPanel"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Name = "AdminFrame"
+frame.Size = UDim2.new(0, 300, 0, 400)
+frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Visible = false
+frame.Parent = screenGui
+
+local function createTextBox(name, placeholder, position)
+	local box = Instance.new("TextBox")
+	box.Name = name
+	box.Size = UDim2.new(0, 260, 0, 30)
+	box.Position = position
+	box.PlaceholderText = placeholder
+	box.Text = ""
+	box.TextColor3 = Color3.new(1, 1, 1)
+	box.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	box.Parent = frame
+	return box
+end
+
+local function createButton(name, text, position)
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Size = UDim2.new(0, 125, 0, 30)
+	button.Position = position
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+	button.Parent = frame
+	return button
+end
+
+local targetBox = createTextBox("TargetBox", "Target username", UDim2.new(0, 20, 0, 20))
+local newAdminBox = createTextBox("NewAdminBox", "Username to promote", UDim2.new(0, 20, 0, 60))
+
+-- Row 1
+local kickBtn = createButton("KickButton", "Kick", UDim2.new(0, 20, 0, 100))
+local banBtn = createButton("BanButton", "Ban", UDim2.new(0, 155, 0, 100))
+
+-- Row 2
+local flingBtn = createButton("FlingButton", "Fling", UDim2.new(0, 20, 0, 140))
+local addAdminBtn = createButton("AddAdminButton", "Add Admin", UDim2.new(0, 155, 0, 140))
+
+-- Row 3 - NEW
+local forceFieldBtn = createButton("ForceFieldButton", "ForceField", UDim2.new(0, 20, 0, 180))
+local flyBtn = createButton("FlyButton", "Fly", UDim2.new(0, 155, 0, 180))
+
+-- Row 4 - NEW
+local godmodeBtn = createButton("GodmodeButton", "Godmode", UDim2.new(0, 20, 0, 220))
+
+-- Toggle panel with M
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.M then
+		frame.Visible = not frame.Visible
+	end
+end)
+
+-- Send command function
+local function sendCommand(command, target)
+	if target ~= "" then
+		remote:FireServer(command, target)
+	end
+end
+
+kickBtn.MouseButton1Click:Connect(function()
+	sendCommand("kick", targetBox.Text)
+end)
+
+banBtn.MouseButton1Click:Connect(function()
+	sendCommand("ban", targetBox.Text)
+end)
+
+flingBtn.MouseButton1Click:Connect(function()
+	sendCommand("fling", targetBox.Text)
+end)
+
+addAdminBtn.MouseButton1Click:Connect(function()
+	sendCommand("addadmin", newAdminBox.Text)
+end)
+
+forceFieldBtn.MouseButton1Click:Connect(function()
+	sendCommand("forcefield", targetBox.Text)
+end)
+
+flyBtn.MouseButton1Click:Connect(function()
+	sendCommand("fly", targetBox.Text)
+end)
+
+godmodeBtn.MouseButton1Click:Connect(function()
+	sendCommand("godmode", targetBox.Text)
+end)
+
+-- SERVER HANDLING
+local bannedUsers = {}
+
+Players.PlayerAdded:Connect(function(player)
+	if bannedUsers[player.Name] then
+		player:Kick("You are banned from this game.")
+	end
+end)
+
+remote.OnServerEvent:Connect(function(sender, command, targetName)
+	if not command or not targetName then return end
+
+	local target = Players:FindFirstChild(targetName)
+	if not target then return end
+
+	if command == "kick" then
+		target:Kick("You have been kicked.")
+
+	elseif command == "ban" then
+		bannedUsers[target.Name] = true
+		target:Kick("You have been banned.")
+
+	elseif command == "fling" and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+		local hrp = target.Character.HumanoidRootPart
+		local bv = Instance.new("BodyVelocity")
+		bv.Velocity = Vector3.new(0, 500, 0)
+		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		bv.P = 1e5
+		bv.Parent = hrp
+		game:GetService("Debris"):AddItem(bv, 0.5)
+
+	elseif command == "addadmin" then
+		print("✅ Admin added: " .. targetName)
+
+	elseif command == "forcefield" and target.Character then
+		local ff = Instance.new("ForceField")
+		ff.Name = "AdminForceField"
+		ff.Parent = target.Character
+
+	elseif command == "fly" and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+		local hrp = target.Character.HumanoidRootPart
+		local flyForce = Instance.new("BodyVelocity")
+		flyForce.Name = "FlyForce"
+		flyForce.Velocity = Vector3.new(0, 50, 0)
+		flyForce.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		flyForce.Parent = hrp
+
+	elseif command == "godmode" and target.Character and target.Character:FindFirstChild("Humanoid") then
+		local humanoid = target.Character:FindFirstChild("Humanoid")
+		humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+			if humanoid.Health < humanoid.MaxHealth then
+				humanoid.Health = humanoid.MaxHealth
+			end
+		end)
+		print("✅ Godmode enabled for " .. target.Name)
+	end
+end)
